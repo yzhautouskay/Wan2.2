@@ -28,7 +28,7 @@ We are excited to introduce **Wan2.2**, a major upgrade to our foundational vide
 ## Video Demos
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/4aca6063-60bf-4953-bfb7-e265053f49ef" width="70%" poster=""> </video>
+  <video src="https://cloud.video.taobao.com/vod/NnCd0fC-1eckDUuVBMz43oD_U6mTsPpBwga3wdnAkXA.mp4" width="70%" poster=""> </video>
 </div>
 
 ## 🔥 Latest News!!
