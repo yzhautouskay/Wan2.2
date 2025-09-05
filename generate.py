@@ -19,6 +19,7 @@ from wan.configs import MAX_AREA_CONFIGS, SIZE_CONFIGS, SUPPORTED_SIZES, WAN_CON
 from wan.distributed.util import init_distributed_group
 from wan.utils.prompt_extend import DashScopePromptExpander, QwenPromptExpander
 from wan.utils.utils import merge_video_audio, save_video, str2bool
+from wan.utils.benchmark import benchmark_decorator
 
 EXAMPLE_PROMPT = {
     "t2v-A14B": {
@@ -214,6 +215,11 @@ def _parse_args():
         action="store_true",
         default=False,
         help="Whether to convert model paramerters dtype.")
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Run the generation in benchmark mode. It means that generation will be rerun a few times and the average generation time will be shown.",
+    )
 
     # following args only works for s2v
     parser.add_argument(
@@ -387,6 +393,9 @@ def generate(args):
         )
 
         logging.info(f"Generating video ...")
+        if args.benchmark:
+            logging.info("Running in benchmark mode...")
+            wan_t2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_t2v.generate)
         video = wan_t2v.generate(
             args.prompt,
             size=SIZE_CONFIGS[args.size],
@@ -412,6 +421,9 @@ def generate(args):
         )
 
         logging.info(f"Generating video ...")
+        if args.benchmark:
+            logging.info("Running in benchmark mode...")
+            wan_ti2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_ti2v.generate)
         video = wan_ti2v.generate(
             args.prompt,
             img=img,
@@ -438,6 +450,9 @@ def generate(args):
             convert_model_dtype=args.convert_model_dtype,
         )
         logging.info(f"Generating video ...")
+        if args.benchmark:
+            logging.info("Running in benchmark mode...")
+            wan_s2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_s2v.generate)
         video = wan_s2v.generate(
             input_prompt=args.prompt,
             ref_image_path=args.image,
@@ -474,6 +489,9 @@ def generate(args):
         )
 
         logging.info("Generating video ...")
+        if args.benchmark:
+            logging.info("Running in benchmark mode...")
+            wan_i2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_i2v.generate)
         video = wan_i2v.generate(
             args.prompt,
             img,

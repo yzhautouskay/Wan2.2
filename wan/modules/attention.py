@@ -21,6 +21,22 @@ __all__ = [
 ]
 
 
+def get_device_cc(device) -> int:
+    """
+    Returns the compute capability of a given torch device if it's a CUDA device, otherwise returns 0.
+
+    Args:
+        device: torch device.
+
+    Returns:
+        device_cc (int): compute capability in the SmXXX format (i.e. 90 for Hopper).
+    """
+    if torch.cuda.is_available() and torch.version.cuda and device.type == "cuda":
+        major, minor = torch.cuda.get_device_capability(device)
+        return major * 10 + minor
+    return 0
+
+
 def flash_attention(
     q,
     k,
@@ -52,6 +68,21 @@ def flash_attention(
     half_dtypes = (torch.float16, torch.bfloat16)
     assert dtype in half_dtypes
     assert q.device.type == 'cuda' and q.size(-1) <= 256
+
+    compute_cap = get_device_cc(q.device)
+
+    # Decide which version of flash attention to use
+    use_fa3 = False
+    if version == 3:
+        if FLASH_ATTN_3_AVAILABLE and compute_cap == 90:
+            use_fa3 = True
+        else:
+            warnings.warn(
+                'Flash Attention 3 was requested but is not available or compatible; falling back to Flash Attention 2.'
+            )
+    elif version is None:
+        if FLASH_ATTN_3_AVAILABLE and compute_cap == 90:
+            use_fa3 = True
 
     # params
     b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
@@ -85,13 +116,8 @@ def flash_attention(
     if q_scale is not None:
         q = q * q_scale
 
-    if version is not None and version == 3 and not FLASH_ATTN_3_AVAILABLE:
-        warnings.warn(
-            'Flash attention 3 is not available, use flash attention 2 instead.'
-        )
-
     # apply attention
-    if (version is None or version == 3) and FLASH_ATTN_3_AVAILABLE:
+    if use_fa3:
         # Note: dropout_p, window_size are not supported in FA3 now.
         x = flash_attn_interface.flash_attn_varlen_func(
             q=q,
@@ -109,7 +135,7 @@ def flash_attention(
             causal=causal,
             deterministic=deterministic)[0].unflatten(0, (b, lq))
     else:
-        assert FLASH_ATTN_2_AVAILABLE
+        assert FLASH_ATTN_2_AVAILABLE, 'Flash Attention 2 is not available.'
         x = flash_attn.flash_attn_varlen_func(
             q=q,
             k=k,
