@@ -87,6 +87,9 @@ def _validate_args(args):
     if args.frame_num is None:
         args.frame_num = cfg.frame_num
 
+    if args.sample_fps is None:
+        args.sample_fps = cfg.sample_fps
+
     args.base_seed = args.base_seed if args.base_seed >= 0 else random.randint(
         0, sys.maxsize)
     # Size check
@@ -211,6 +214,11 @@ def _parse_args():
         default=None,
         help="Classifier free guidance scale.")
     parser.add_argument(
+        "--sample_fps",
+        type=int,
+        default=None,
+        help="The frames per second of the generated video.")
+    parser.add_argument(
         "--convert_model_dtype",
         action="store_true",
         default=False,
@@ -220,6 +228,16 @@ def _parse_args():
         action="store_true",
         help="Run the generation in benchmark mode. It means that generation will be rerun a few times and the average generation time will be shown.",
     )
+    parser.add_argument(
+        '--benchmark_iters',
+        type=int,
+        default=2,
+        help='Number of iterations for benchmarking.')
+    parser.add_argument(
+        '--benchmark_warmup_iters',
+        type=int,
+        default=1,
+        help='Number of warmup iterations for benchmarking.')
 
     # following args only works for s2v
     parser.add_argument(
@@ -395,7 +413,7 @@ def generate(args):
         logging.info(f"Generating video ...")
         if args.benchmark:
             logging.info("Running in benchmark mode...")
-            wan_t2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_t2v.generate)
+            wan_t2v.generate = benchmark_decorator(args.benchmark_iters, args.benchmark_warmup_iters)(wan_t2v.generate)
         video = wan_t2v.generate(
             args.prompt,
             size=SIZE_CONFIGS[args.size],
@@ -423,7 +441,7 @@ def generate(args):
         logging.info(f"Generating video ...")
         if args.benchmark:
             logging.info("Running in benchmark mode...")
-            wan_ti2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_ti2v.generate)
+            wan_ti2v.generate = benchmark_decorator(args.benchmark_iters, args.benchmark_warmup_iters)(wan_ti2v.generate)
         video = wan_ti2v.generate(
             args.prompt,
             img=img,
@@ -452,7 +470,7 @@ def generate(args):
         logging.info(f"Generating video ...")
         if args.benchmark:
             logging.info("Running in benchmark mode...")
-            wan_s2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_s2v.generate)
+            wan_s2v.generate = benchmark_decorator(args.benchmark_iters, args.benchmark_warmup_iters)(wan_s2v.generate)
         video = wan_s2v.generate(
             input_prompt=args.prompt,
             ref_image_path=args.image,
@@ -491,7 +509,7 @@ def generate(args):
         logging.info("Generating video ...")
         if args.benchmark:
             logging.info("Running in benchmark mode...")
-            wan_i2v.generate = benchmark_decorator(profiling_iterations_count=1, warmup_iterations_count=0)(wan_i2v.generate)
+            wan_i2v.generate = benchmark_decorator(args.benchmark_iters, args.benchmark_warmup_iters)(wan_i2v.generate)
         video = wan_i2v.generate(
             args.prompt,
             img,
@@ -516,7 +534,7 @@ def generate(args):
         save_video(
             tensor=video[None],
             save_file=args.save_file,
-            fps=cfg.sample_fps,
+            fps=args.sample_fps,
             nrow=1,
             normalize=True,
             value_range=(-1, 1))
